@@ -1,0 +1,126 @@
+#!/usr/bin/env Rscript
+# Karolis Koncevičius 2019-03-19
+
+################################################################################
+################################## DEPENDS ON ##################################
+################################################################################
+
+suppressPackageStartupMessages(library(docopt))
+suppressPackageStartupMessages(library(plyr))
+
+################################################################################
+############################### PARSE ARGUMENTS ################################
+################################################################################
+
+'usage: downloadGeo <geoID> <downloadDir> [--help]
+
+-h --help  show this
+' -> doc
+
+args <- docopt(doc)
+
+downloadDir <- args$downloadDir
+GSE         <- args$geoID
+
+################################################################################
+################################## FUNCTIONS ###################################
+################################################################################
+
+filesFromGSE <- function(GSE) {
+  url   <- paste0("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=", GSE)
+  lines <- readLines(url)
+
+  urlinds <- grep(paste0("/geo/download/\\?acc=", GSE), lines)
+  names <- lines[urlinds-2]
+  names <- gsub("<.*?>", "", names)
+  links <- lines[urlinds]
+  links <- sub(".*?(/geo/download/\\?acc=.*?)\\\".*", "\\1", links)
+  links <- paste0("https://www.ncbi.nlm.nih.gov", links)
+  data.frame(file=names, link=links, stringsAsFactors=FALSE)
+}
+
+GSMsFromGSE <- function(GSE) {
+  url   <- paste0("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=", GSE)
+  lines <- readLines(url)
+
+  lines <- lines[grep("<a href=\"/geo/query/acc\\.cgi\\?acc=GSM", lines)]
+  lines <- gsub("<.*?>", "", lines)
+  lines
+}
+
+sampleKeyFromGSM <- function(GSM) {
+  url   <- paste0("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=", GSM)
+  lines <- readLines(url)
+
+  lines <- lines[grep("<td>Status</td>", lines) : length(lines)]
+  lines <- lines[1 : grep("<td>Submission date</td>", lines)-1]
+
+  lines <- gsub("<td.*?>|</td>", "", lines)
+  lines <- gsub("<tr.*?>|</tr>", "", lines)
+  lines <- gsub("<a.*?>|</a>", "", lines)
+  lines <- gsub("<br>$", "", lines)
+  lines <- gsub("&nbsp;", "", lines)
+  lines <- lines[nchar(lines) > 0]
+
+  names <- lines[seq(1, length(lines), 2)]
+  vals  <- lines[seq(2, length(lines), 2)]
+
+  names <- c("gsm", names)
+  vals  <- c(GSM, vals)
+
+  df <- as.data.frame(as.list(vals), stringsAsFactors=FALSE)
+  names(df) <- tolower(names)
+
+  df <- data.frame(df, charsToDf(df$characteristics), stringsAsFactors=FALSE)
+  df$characteristics <- NULL
+
+  df
+}
+
+charsToDf <- function(chars) {
+  vec <- unlist(lapply(unlist(strsplit(chars, "<br>")), strsplit, ": "))
+  names <- vec[seq(1, length(vec), 2)]
+  names <- paste0("CHAR_", names)
+  vals  <- vec[seq(2, length(vec), 2)]
+  as.data.frame(as.list(vals), col.names=names, stringsAsFactors=FALSE)
+}
+
+################################################################################
+##################################### RUN ######################################
+################################################################################
+
+############################ TAKE CARE OF DIRECTORY ############################
+
+if(dir.exists(downloadDir) && length(list.files(downloadDir))!=0) {
+  stop(paste("Non-empty directory", downloadDir, "already exists"))
+} else if(!dir.exists(downloadDir)) {
+  dir.create(downloadDir, recursive=TRUE)
+}
+
+################################ GET SAMPLE KEY ################################
+
+write("########## Downloading Sample Key ##########\n", stderr())
+
+file <- file.path(downloadDir, "samplekey.csv")
+write(paste0("- ", file, "\n"), stderr())
+
+gsms <- GSMsFromGSE(GSE)
+dfs  <- Map(sampleKeyFromGSM, gsms)
+key  <- do.call(plyr::rbind.fill, dfs)
+
+write(paste("> number of samples:", nrow(key), "\n"), stderr())
+
+write.csv(key, file=file, row.names=FALSE)
+
+################################ GET ALL FILES #################################
+
+write("########## Downloading Data Files ##########\n", stderr())
+
+files <- filesFromGSE(GSE)
+files$file <- file.path(downloadDir, files$file)
+
+for(i in 1:nrow(files)) {
+  write(paste0("- ", files$file[i], "\n"), stderr())
+  download.file(files$link[i], files$file[i])
+}
+
