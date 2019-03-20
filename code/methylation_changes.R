@@ -8,7 +8,7 @@ library(minfi)
 
 # Obtain the file list
 
-file_list <- list.files('input/')
+file_list <- list.files("input/")
 file_list <- file_list[grep(file_list, pattern="GSM")]
 
 # Generate valid base names
