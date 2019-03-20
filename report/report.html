@@ -218,8 +218,11 @@ drops &lt;- c(&quot;data.processing&quot;,
 samples_list &lt;- samples_list[ , !(names(samples_list) %in% drops)]
 
 kable(samples_list, &quot;html&quot;) %&gt;%
-      kable_styling(font_size = 9)</code></pre>
-<table class="table" style="font-size: 9px; margin-left: auto; margin-right: auto;">
+      kable_styling(font_size = 10) %&gt;% 
+      kable_styling(&quot;striped&quot;) %&gt;%
+      scroll_box(width = &quot;100%&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 5px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped" style="font-size: 10px; margin-left: auto; margin-right: auto; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:left;">
@@ -741,6 +744,7 @@ input//GSM1522967_8221932123_R06C02
 </tr>
 </tbody>
 </table>
+</div>
 <pre class="r"><code>rm(samples_list)
 rm(drops)</code></pre>
 <ol start="4" style="list-style-type: decimal">
@@ -751,8 +755,11 @@ rm(drops)</code></pre>
 probes_list &lt;- head(getProbeInfo(RGSet), 10)</code></pre>
 <pre><code>## Loading required package: IlluminaHumanMethylation450kmanifest</code></pre>
 <pre class="r"><code>kable(probes_list, &quot;html&quot;) %&gt;%
-      kable_styling(font_size = 9)</code></pre>
-<table class="table" style="font-size: 9px; margin-left: auto; margin-right: auto;">
+      kable_styling(font_size = 10) %&gt;%
+      kable_styling(&quot;striped&quot;) %&gt;%
+      scroll_box(width = &quot;100%&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 5px; overflow-x: scroll; width:100%; ">
+<table class="table table table-striped" style="font-size: 10px; margin-left: auto; margin-right: auto; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:left;">
@@ -1044,6 +1051,7 @@ TCTCTAATAAACTACTAACGCGCACTCTCTAACGTCACCAAAAAACGACG
 </tr>
 </tbody>
 </table>
+</div>
 <pre class="r"><code>rm(probes_list)</code></pre>
 
 
