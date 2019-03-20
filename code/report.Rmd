@@ -1,0 +1,35 @@
+---
+title: "Normali komanda - Data Report"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r loadData}
+
+RGSet <- readRDS("../output/RGSet.RDS")
+
+```
+
+Dataset Description:
+<...>
+
+1. How many samples are there?
+
+There are `r dim(RGSet)[2]` samples in this data set.
+
+2. How many CpGs (or probes)?
+
+There are `r dim(RGSet)[1]` CpGs (probes).
+
+Some samples information:
+
+``` {r samplesInformation}
+
+
+
+```
