@@ -7,6 +7,9 @@ output: html_document
 
 knitr::opts_chunk$set(echo = TRUE)
 
+library(knitr)
+library(kableExtra)
+
 ```
 
 ```{r loadData}
@@ -29,7 +32,33 @@ There are `r dim(RGSet)[1]` CpGs (probes).
 Some samples information:
 
 ``` {r samplesInformation}
+# Show first 10 samples in the data set
 
+samples_list <- head(pData(RGSet), 10)
+drops <- c("data.processing", 
+           "scan.protocol", 
+           "hybridization.protocol", 
+           "extraction.protocol")
+samples_list <- samples_list[ , !(names(samples_list) %in% drops)]
 
+kable(samples_list, "html") %>%
+      kable_styling(font_size = 9)
+
+rm(samples_list)
+rm(drops)
+
+```
+
+Some probes (CpGs) information:
+
+``` {r probesInformation}
+# Show first 10 probes in the data set
+
+probes_list <- head(getProbeInfo(RGSet), 10)
+
+kable(probes_list, "html") %>%
+      kable_styling(font_size = 9)
+
+rm(probes_list)
 
 ```
