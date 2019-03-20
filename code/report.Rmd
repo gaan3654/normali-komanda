@@ -18,8 +18,9 @@ RGSet <- readRDS("../output/RGSet.RDS")
 
 ```
 
-Dataset Description:
-<...>
+Series GSE62219
+
+The data represents longitudinal changes in DNA methylation in a total of 60 samples at 3, 6, 12, 24, 36, 48, and 60 months after birth, using serial DNA samples extracted from peripheral blood leukocytes of 10 healthy girls. DNA methylation was measured using the HumanMethylation450 BeadChip. All research and methods were made to approve hypothesis that age-related changes in DNA methylation occurring in blood leukocytes during early childhood may reflect epigenetic maturation.
 
 1. How many samples are there?
 
@@ -29,7 +30,7 @@ There are `r dim(RGSet)[2]` samples in this data set.
 
 There are `r dim(RGSet)[1]` CpGs (probes).
 
-Some samples information:
+3. Some samples information:
 
 ``` {r samplesInformation}
 # Show first 10 samples in the data set
@@ -49,7 +50,7 @@ rm(drops)
 
 ```
 
-Some probes (CpGs) information:
+4. Some probes (CpGs) information:
 
 ``` {r probesInformation}
 # Show first 10 probes in the data set
