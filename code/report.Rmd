@@ -3,7 +3,7 @@ title: "Normali komanda - Data Report"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, out.width=792}
 
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -43,7 +43,9 @@ drops <- c("data.processing",
 samples_list <- samples_list[ , !(names(samples_list) %in% drops)]
 
 kable(samples_list, "html") %>%
-      kable_styling(font_size = 9)
+      kable_styling(font_size = 10) %>% 
+      kable_styling("striped") %>%
+      scroll_box(width = "100%")
 
 rm(samples_list)
 rm(drops)
@@ -58,7 +60,9 @@ rm(drops)
 probes_list <- head(getProbeInfo(RGSet), 10)
 
 kable(probes_list, "html") %>%
-      kable_styling(font_size = 9)
+      kable_styling(font_size = 10) %>%
+      kable_styling("striped") %>%
+      scroll_box(width = "100%")
 
 rm(probes_list)
 
