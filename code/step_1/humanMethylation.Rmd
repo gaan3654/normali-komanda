@@ -1,0 +1,310 @@
+---
+title: "Normali komanda - humanMethylation"
+output: html_document
+---
+
+# Setup
+
+```{r setup, include=FALSE, out.width=792}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(FlowSorted.Blood.450k)
+library(minfi)
+library(IlluminaHumanMethylation450kmanifest)
+library(IlluminaHumanMethylation450kanno.ilmn12.hg19)
+library(cluster)
+library(knitr)
+library(kableExtra)
+
+```
+
+# 1. Clean up the annotation
+# 2. Prepare and save the RGChannelSet
+
+Due to the low quality of previous data, we will be using already prepared raw data objects from Bioconductor experiment package FlowSorted.Blood.450k.
+
+A few samples from the dataset:
+
+```{r prepareData}
+
+# Load data
+data <- FlowSorted.Blood.450k
+saveRDS(data, file="../../output/step_1/RGSet.RDS")
+
+# Show a few samples information
+samples_list <- head(pData(data), 10)
+kable(samples_list, "html") %>%
+      kable_styling(font_size=10) %>% 
+      kable_styling("striped") %>%
+      scroll_box(width="100%")
+
+# Remove redundant variables
+rm(samples_list)
+
+```
+
+# 3. Obtain detection p-values
+
+All values with detection p-value > 0.01 are considered as "bad". As we can see from the following code, there are no samples that have more than 1% of "bad" values. Therefore, no samples have been removed in this step.
+
+The graph below shows the first 10 samples p-value percentage. Small values indicate that the dataset is of a high quality.
+
+```{r pValues}
+
+# Obtain detection p-values
+detP <- detectionP(data)
+
+# All values with detection p-value > 0.01 are "bad"
+failed <- detP > 0.01
+
+# Good sample = fraction of failed positions < 0.01
+goodSamples <- colMeans(failed) < 0.01
+badSamples  <- colMeans(failed) >= 0.01
+
+# Count good and bad samples
+count(goodSamples)
+count(badSamples)
+
+# Barplot showing first 10 samples p-value percentage
+randomSamples <- head(colMeans(failed), 10)
+
+b <- barplot(
+  horiz=TRUE,
+  randomSamples,
+  las=2,
+  col=c("darkviolet", "darkturquoise"),
+  main="Percentage of failed positions"
+)
+
+text(
+  y=b, 
+  x=randomSamples-0.00005, 
+  labels=as.character(format(round(randomSamples, 7), nsmall = 2))
+)
+
+# Remove redundant variables
+rm(b)
+rm(goodSamples)
+rm(badSamples)
+rm(randomSamples)
+
+```
+
+# 4. Normalize the dataset
+
+```{r normalize}
+
+data <- preprocessSWAN(data)
+
+```
+
+# 5. Remove all probes that have more than 1% of “bad” detection p-values
+
+```{r filterProbes}
+
+# Remove all probes that are "bad"
+goodProbes <- rowMeans(failed) < 0.01
+data <- data[goodProbes, ]
+
+# Remove redundant variables
+rm(failed)
+rm(goodProbes)
+
+```
+
+# 6. Remove “CH” probes and “SNP related” probes
+
+```{r removeCH}
+
+data <- dropMethylationLoci(data)
+
+```
+
+# 7. Extract the 3 tables from the prepared object file
+
+```{r extractTables}
+
+# The main matrix of values
+dataMatrix <- getBeta(data)
+
+# The sample key information
+keyInfo <- pData(data)
+
+# The meta information about rows
+metaInfo <- getAnnotation(data)
+
+```
+
+# 8. Implement the IAC outlier removal method
+
+The first three graphs represent the original dataset without outlier removal.
+We've chosen sdout = -2 and performed two iterations to elimiate outliers.
+The following graphs represent the quality increase with each iteration.
+
+```{r outlierRemoval}
+
+# Calculating IACs for all pairs of samples and
+# examining the distribution of IACs in the dataset
+dim(dataMatrix)
+IAC <- cor(dataMatrix, use="p")
+hist(
+  IAC,
+  sub=paste("Mean=", format(mean(IAC[upper.tri(IAC)]), digits=3)),
+  col=c("darkviolet", "darkturquoise")
+)
+
+# Performing hierachical clustering using 1-IAC as a distance metric
+cluster <- hclust(as.dist(1-IAC), method="average")
+plot(
+  cluster,
+  cex=0.7,
+  labels=dimnames(dataMatrix)[[2]]
+)
+
+# Another way to visualize outliers 
+# Calculating the mean IAC for each array
+meanIAC <- apply(IAC, 2, mean)
+sdCorr <- sd(meanIAC)
+numbersd <- (meanIAC-mean(meanIAC))/sdCorr
+plot(numbersd)
+abline(h=-2)
+
+# Outliers depicted above are the 
+# same outliers identified in the initial dendrogram
+sdout <- -2
+outliers <- dimnames(dataMatrix)[[2]][numbersd<sdout]
+outliers
+
+# Removing outliers and calculating new IAC matrix
+dataMatrix2 <- dataMatrix[, numbersd>sdout]
+dim(dataMatrix2)
+
+###
+IAC <- cor(dataMatrix2, use="p")
+hist(
+  IAC,
+  sub=paste("Mean=", format(mean(IAC[upper.tri(IAC)]), digits=3)),
+  col=c("darkviolet", "darkturquoise")
+)
+
+###
+cluster <- hclust(as.dist(1-IAC), method="average")
+plot(
+  cluster,
+  cex=0.7,
+  labels=dimnames(dataMatrix2)[[2]]
+)
+
+###
+meanIAC <- apply(IAC, 2, mean)
+sdCorr <- sd(meanIAC)
+numbersd <- (meanIAC-mean(meanIAC))/sdCorr
+plot(numbersd)
+abline(h=-2)
+
+# Repeating the same process again
+sdout <- -2
+outliers <- dimnames(dataMatrix2)[[2]][numbersd<sdout]
+outliers
+
+###
+dataMatrix3 <- dataMatrix2[, numbersd>sdout]
+dim(dataMatrix3)
+
+###
+IAC <- cor(dataMatrix3, use="p")
+hist(
+  IAC,
+  sub=paste("Mean=", format(mean(IAC[upper.tri(IAC)]), digits=3)),
+  col=c("darkviolet", "darkturquoise")
+)
+
+###
+cluster <- hclust(as.dist(1-IAC), method="average")
+plot(
+  cluster,
+  cex=0.7,
+  labels=dimnames(dataMatrix3)[[2]]
+)
+
+###
+meanIAC <- apply(IAC, 2, mean)
+sdCorr <- sd(meanIAC)
+numbersd <- (meanIAC-mean(meanIAC))/sdCorr
+plot(numbersd)
+abline(h=-2)
+
+# Removing redundant variables
+rm(IAC)
+rm(cluster)
+rm(dataMatrix2)
+rm(dataMatrix3)
+rm(outliers)
+rm(meanIAC)
+rm(sdCorr)
+rm(numbersd)
+rm(sdout)
+
+```
+
+# 9. Add a short quality control step
+
+For quality control step, methylation levels at different CpG Island positions were compared.
+As we can see from the graph below, seas and shelves have high methylation rates, whereas islands and shores have low methylation.
+
+``` {r qualityControl}
+
+# Comparing methylation levels at different CpG Island positions
+cpgMeans <- rowMeans(dataMatrix)
+
+names(cpgMeans) <- metaInfo$Relation_to_Island
+
+shore   <- cpgMeans[names(cpgMeans) %in% c("N_Shore", "S_Shore")]
+shelf   <- cpgMeans[names(cpgMeans) %in% c("N_Shelf", "S_Shelf")]
+island  <- cpgMeans[names(cpgMeans) == "Island"]
+sea     <- cpgMeans[names(cpgMeans) == "OpenSea"]
+
+plot(
+  density(shore),
+  ylim=c(0,8),
+  col="deeppink",
+  main="Methylation levels at different CpG Island positions",
+  cex=2
+)
+
+lines(density(shelf), col="darkviolet", cex=2)
+lines(density(island), col="darkturquoise", cex=2)
+lines(density(sea), col="green", cex=2)
+
+legend(
+  x=0.4,
+  y=8,
+  legend=c("Shore", "Shelf", "Island", "Sea"),
+  col=c("deeppink", "darkviolet", "darkturquoise", "green"),
+  lty=1
+)
+
+# Remove redundant variables
+rm(cpgMeans)
+rm(island)
+rm(sea)
+rm(shelf)
+rm(shore)
+
+```
+
+# 10. Save the prepared data objects to the output directory
+
+``` {r saveData}
+
+saveRDS(data, "../../output/step_1/finalData.RDS")
+saveRDS(dataMatrix, "../../output/step_1/dataMatrix.RDS")
+saveRDS(keyInfo, "../../output/step_1/keyInfo.RDS")
+saveRDS(metaInfo, "../../output/step_1/metaInfo.RDS")
+
+```
+
+
+
+
