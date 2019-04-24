@@ -1,0 +1,110 @@
+---
+title: "Clustering"
+output: html_document
+---
+
+# Setup
+
+```{r setup, include=FALSE, out.width=792}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(knitr)
+library(RColorBrewer)
+library(WGCNA)
+library(pheatmap)
+
+```
+
+```{r prepareData}
+
+# Load data
+data <- readRDS("../../output/step_1/finalData.RDS")
+dataMatrix <- readRDS("../../output/step_1/dataMatrix.RDS")
+keyInfo <- readRDS("../../output/step_1/keyInfo.RDS")
+metaInfo <- readRDS("../../output/step_1/metaInfo.RDS")
+
+```
+
+1. Perform Hierarchical Clustering on samples. 
+
+```{r hierarchicalClustering}
+
+# Find correlation distance and perform clustering
+corDistance = dist(1-cor(dataMatrix))
+clusters = hclust(corDistance, method="complete")
+
+# Filter out redundant data from previously saved keyInfo data frame
+filteredData <- unique(rownames(keyInfo)[rownames(keyInfo) %in% 
+                                  colnames(dataMatrix)])
+keyInfo <- keyInfo[filteredData, ]
+
+saveRDS(keyInfo, "../../output/step_1/keyInfo.RDS")
+
+# Generate colors for clustering
+
+clustColors = data.frame(
+  cellType=labels2colors(keyInfo$CellTypeLong, naColor="grey"),
+  sex=labels2colors(keyInfo$Sex, naColor="grey")
+)
+
+# Plot dendogram
+plotDendroAndColors(
+  clusters,
+  colors=clustColors
+)
+
+```
+
+2. Produce a Heatmap plot. 
+
+```{r heatmap}
+
+pheatmap(
+  head(dataMatrix, 50),
+  fontsize=7
+)
+
+```
+
+3. Conduct a principal component analysis.
+
+```{r analysis}
+
+# Perform a principal component analysis
+prComponent = prcomp(t(dataMatrix))
+
+# Plot a screeplot
+colorPallete = brewer.pal(n=3, name = "Dark2")
+
+screeplot(
+  prComponent,
+  type="lines",
+  ylim=c(0, 1000),
+  col=colorPallete,
+  main="Variance explained by each principal component"
+)
+
+## Pair plot
+
+pairs(
+  prComponent$x[, 1:5],
+	col=labels2colors(keyInfo$CellTypeLong),
+	pch=as.numeric(as.factor(keyInfo$Sex))
+)
+
+```
+
+How many principal components would it take in order to capture 90% of the variance in the data?
+It would take `r table(cumsum(prComponent$sdev^2)/sum(prComponent$sdev^2) > 0.9)["FALSE"]` principal components.
+
+4. Produce a heatmap for principal component scores.
+
+```{r pcHeatmap}
+
+pheatmap(
+  t(prComponent$x),
+  fontsize=7
+)
+
+```
