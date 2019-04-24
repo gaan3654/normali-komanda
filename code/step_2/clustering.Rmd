@@ -42,7 +42,6 @@ keyInfo <- keyInfo[filteredData, ]
 saveRDS(keyInfo, "../../output/step_1/keyInfo.RDS")
 
 # Generate colors for clustering
-
 clustColors = data.frame(
   cellType=labels2colors(keyInfo$CellTypeLong, naColor="grey"),
   sex=labels2colors(keyInfo$Sex, naColor="grey")
@@ -53,6 +52,11 @@ plotDendroAndColors(
   clusters,
   colors=clustColors
 )
+
+# Remove redundant variables
+rm(corDistance)
+rm(clusters)
+rm(filteredData)
 
 ```
 
@@ -95,8 +99,7 @@ pairs(
 
 ```
 
-How many principal components would it take in order to capture 90% of the variance in the data?
-It would take `r table(cumsum(prComponent$sdev^2)/sum(prComponent$sdev^2) > 0.9)["FALSE"]` principal components.
+It would take `r table(cumsum(prComponent$sdev^2)/sum(prComponent$sdev^2) > 0.9)["FALSE"]` principal components in order to capture 90% of the variance in the data.
 
 4. Produce a heatmap for principal component scores.
 
