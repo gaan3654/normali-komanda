@@ -139,7 +139,7 @@ metaInfo <- getAnnotation(data)
 # 8. Implement the IAC outlier removal method
 
 The first three graphs represent the original dataset without outlier removal.
-We've chosen sdout = -2 and performed two iterations to elimiate outliers.
+We've chosen sdout = -2 and performed two iterations to eliminate outliers.
 The following graphs represent the quality increase with each iteration.
 
 ```{r outlierRemoval}
@@ -234,6 +234,9 @@ sdCorr <- sd(meanIAC)
 numbersd <- (meanIAC-mean(meanIAC))/sdCorr
 plot(numbersd)
 abline(h=-2)
+
+###
+dataMatrix <- dataMatrix3
 
 # Removing redundant variables
 rm(IAC)
