@@ -26,7 +26,7 @@ metaInfo <- readRDS("../../output/step_1/metaInfo.RDS")
 
 ```
 
-1. Perform Hierarchical Clustering on samples. 
+1. Perform Hierarchical Clustering on samples.
 
 ```{r hierarchicalClustering}
 
@@ -60,16 +60,32 @@ rm(filteredData)
 
 ```
 
+What tendencies do you see?
+The similarity of cell types between different samples is represented by the vertical distances on each branch of the dendrogram. Without analysing any given samples, we can clearly see that all of the subjects were male. Colors bar and sample labels describe each individual sample cell type (e.g., Red represents Eosinophils, Pink - Peripheral Blood Mononuclear Cells, Green - CD8+ T-cells, Light Pink - Neutrophils, etc). For example, similarity between Eosinophils and CD4+ T-cells is relatively low compared to Whole Blood and Eosinophils. 
+
+What metadata in the sample key (if any) has most influence on the clustering?
+Sample name and cell type.
+
+How many clusters would you say there are?
+There are `r length(unique(keyInfo@listData[["CellTypeLong"]]))` clusters.
+
+Are there any structure within separate clusters?
+It can observed that there is a structure.
+
 2. Produce a Heatmap plot. 
 
 ```{r heatmap}
 
+cpgMeans <- rowMeans((dataMatrix - rowMeans(dataMatrix)))
+
 pheatmap(
-  head(dataMatrix, 50),
+  dataMatrix[order(cpgMeans)[1:50],],
   fontsize=7
 )
 
 ```
+
+Larger values are represented by various shades of red squares (pixels) and smaller values by blue squares. 
 
 3. Conduct a principal component analysis.
 
