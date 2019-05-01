@@ -87,6 +87,10 @@ pheatmap(
 
 Larger values are represented by various shades of red squares (pixels) and smaller values by blue squares. 
 
+At first, we can clearly see a vertical line that separates samples into two groups. The separation in these two groups can be clearly seen by the dendrogram fragment on the top of the heatmap. This means that these two groups of samples are least related to each other.
+
+Here we can see the level of methylation of every probe from the list in each sample.
+
 3. Conduct a principal component analysis.
 
 ```{r analysis}
@@ -104,7 +108,10 @@ screeplot(
   col=colorPallete,
   main="Variance explained by each principal component"
 )
+```
+It would take `r table(cumsum(prComponent$sdev^2)/sum(prComponent$sdev^2) > 0.9)["FALSE"]` principal components in order to capture 90% of the variance in the data.
 
+```{r analysis2}
 ## Pair plot
 
 pairs(
@@ -114,8 +121,11 @@ pairs(
 )
 
 ```
+The circle in the graph represents - male and the triangles - female. We can see that all the samples were taken from males.
 
-It would take `r table(cumsum(prComponent$sdev^2)/sum(prComponent$sdev^2) > 0.9)["FALSE"]` principal components in order to capture 90% of the variance in the data.
+The color of each bubble represents a different cell types.
+
+Principal component analysis visualize genetic distance and relatedness between populations.
 
 4. Produce a heatmap for principal component scores.
 
