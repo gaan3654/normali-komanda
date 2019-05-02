@@ -3,11 +3,9 @@ title: "Clustering"
 output: html_document
 ---
 
-# Setup
+```{r setup, include=FALSE}
 
-```{r setup, include=FALSE, out.width=792}
-
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, out.width='750px', dpi=200)
 
 library(knitr)
 library(RColorBrewer)
@@ -15,6 +13,8 @@ library(WGCNA)
 library(pheatmap)
 
 ```
+
+#  0. Load data
 
 ```{r prepareData}
 
@@ -26,13 +26,13 @@ metaInfo <- readRDS("../../output/step_1/metaInfo.RDS")
 
 ```
 
-1. Perform Hierarchical Clustering on samples.
+# 1. Perform Hierarchical Clustering on samples.
 
 ```{r hierarchicalClustering}
 
 # Find correlation distance and perform clustering
-corDistance = dist(1-cor(dataMatrix))
-clusters = hclust(corDistance, method="complete")
+corDistance <- dist(1-cor(dataMatrix))
+clusters <- hclust(corDistance, method="complete")
 
 # Filter out redundant data from previously saved keyInfo data frame
 filteredData <- unique(rownames(keyInfo)[rownames(keyInfo) %in% 
@@ -42,7 +42,7 @@ keyInfo <- keyInfo[filteredData, ]
 saveRDS(keyInfo, "../../output/step_1/keyInfo.RDS")
 
 # Generate colors for clustering
-clustColors = data.frame(
+clustColors <- data.frame(
   cellType=labels2colors(keyInfo$CellTypeLong, naColor="grey"),
   sex=labels2colors(keyInfo$Sex, naColor="grey")
 )
@@ -60,7 +60,6 @@ rm(filteredData)
 
 ```
 
-What tendencies do you see?
 The similarity of cell types between different samples is represented by the vertical distances on each branch of the dendrogram. Without analysing any given samples, we can clearly see that all of the subjects were male. Colors bar and sample labels describe each individual sample cell type (e.g., Red represents Eosinophils, Pink - Peripheral Blood Mononuclear Cells, Green - CD8+ T-cells, Light Pink - Neutrophils, etc). For example, similarity between Eosinophils and CD4+ T-cells is relatively low compared to Whole Blood and Eosinophils. 
 
 What metadata in the sample key (if any) has most influence on the clustering?
@@ -70,9 +69,9 @@ How many clusters would you say there are?
 There are `r length(unique(keyInfo@listData[["CellTypeLong"]]))` clusters.
 
 Are there any structure within separate clusters?
-It can observed that there is a structure.
+It can observed that there is a structure, but it's not clearly seen.
 
-2. Produce a Heatmap plot. 
+# 2. Produce a Heatmap plot. 
 
 ```{r heatmap}
 
@@ -85,21 +84,17 @@ pheatmap(
 
 ```
 
-Larger values are represented by various shades of red squares (pixels) and smaller values by blue squares. 
+Larger values are represented by various shades of red squares (pixels) and smaller values - by blue squares. We can see a vertical line that separates samples into two groups. The separation of these two groups is also seen in the dendrogram fragment on the top of the heatmap. The reason for this might be that these two groups of samples are least related to each other.
 
-At first, we can clearly see a vertical line that separates samples into two groups. The separation in these two groups can be clearly seen by the dendrogram fragment on the top of the heatmap. This means that these two groups of samples are least related to each other.
-
-Here we can see the level of methylation of every probe from the list in each sample.
-
-3. Conduct a principal component analysis.
+# 3. Conduct a principal component analysis.
 
 ```{r analysis}
 
 # Perform a principal component analysis
-prComponent = prcomp(t(dataMatrix))
+prComponent <- prcomp(t(dataMatrix))
 
 # Plot a screeplot
-colorPallete = brewer.pal(n=3, name = "Dark2")
+colorPallete <- brewer.pal(n=3, name = "Dark2")
 
 screeplot(
   prComponent,
@@ -109,6 +104,7 @@ screeplot(
   main="Variance explained by each principal component"
 )
 ```
+
 It would take `r table(cumsum(prComponent$sdev^2)/sum(prComponent$sdev^2) > 0.9)["FALSE"]` principal components in order to capture 90% of the variance in the data.
 
 ```{r analysis2}
@@ -121,13 +117,10 @@ pairs(
 )
 
 ```
-The circle in the graph represents - male and the triangles - female. We can see that all the samples were taken from males.
 
-The color of each bubble represents a different cell types.
+Circles in the graph represent samples taken from male patients and the triangles - female. In our case, we can see that all the samples were taken from males. The color of each bubble represents different cell types. Principal component analysis visualize genetic distance and relatedness between each sample data.
 
-Principal component analysis visualize genetic distance and relatedness between populations.
-
-4. Produce a heatmap for principal component scores.
+# 4. Produce a heatmap for principal component scores.
 
 ```{r pcHeatmap}
 
