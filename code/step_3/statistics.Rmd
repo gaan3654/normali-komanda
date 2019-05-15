@@ -1,0 +1,51 @@
+---
+title: "Statistical Hypothesis Testing"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, out.width='750px', dpi=200)
+library(dplyr)
+
+```
+
+#  0. Load data
+
+```{r prepareData}
+
+# Load data
+data <- readRDS("../../output/step_1/finalData.RDS")
+dataMatrix <- readRDS("../../output/step_1/dataMatrix.RDS")
+keyInfo <- readRDS("../../output/step_1/keyInfo.RDS")
+metaInfo <- readRDS("../../output/step_1/metaInfo.RDS")
+
+# Add 'Age' column
+match_table <- 
+structure(
+  list(id = structure(1:6, 
+                      .Label = c("105", "218", "261", "043", "160", "149"), 
+                      class = "factor"), 
+       age = structure(1:6, 
+                       .Label = c("60", "44", "31", "25", "25", "43"), 
+                       class = "factor")
+  ), 
+  .Names = c("SampleID", "age"),
+  class = "data.frame", 
+  row.names = c(NA, -6L)
+)
+
+keyInfo <- merge(keyInfo, match_table, all.x=TRUE)
+
+# Remove redundant data
+rm(match_table)
+
+```
+
+# 1. Perform a simple mean-difference hypothesis test between two groups. 
+
+```{r meanDiff}
+
+
+
+```
