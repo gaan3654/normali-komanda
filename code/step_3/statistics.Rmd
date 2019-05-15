@@ -6,7 +6,9 @@ output: html_document
 ```{r setup, include=FALSE}
 
 knitr::opts_chunk$set(echo = TRUE, out.width='750px', dpi=200)
-library(dplyr)
+library(kableExtra)
+library(qqman)
+library("ggplot2")
 
 ```
 
@@ -21,24 +23,14 @@ keyInfo <- readRDS("../../output/step_1/keyInfo.RDS")
 metaInfo <- readRDS("../../output/step_1/metaInfo.RDS")
 
 # Add 'Age' column
-match_table <- 
-structure(
-  list(id = structure(1:6, 
-                      .Label = c("105", "218", "261", "043", "160", "149"), 
-                      class = "factor"), 
-       age = structure(1:6, 
-                       .Label = c("60", "44", "31", "25", "25", "43"), 
-                       class = "factor")
-  ), 
-  .Names = c("SampleID", "age"),
-  class = "data.frame", 
-  row.names = c(NA, -6L)
-)
+matchTable <- data.frame("age"=c("60", "44", "31", "25", "25", "43"), 
+                         "SampleID"=c("105", "218", "261", "043", "160", "149"),
+                         stringsAsFactors=FALSE)
 
-keyInfo <- merge(keyInfo, match_table, all.x=TRUE)
+keyInfo <- merge(keyInfo, matchTable, all.x=TRUE)
 
 # Remove redundant data
-rm(match_table)
+rm(matchTable)
 
 ```
 
@@ -46,6 +38,139 @@ rm(match_table)
 
 ```{r meanDiff}
 
+# Perform t.test on data
+ttest <- apply(dataMatrix, 
+              1, 
+              function(x) t.test(x[keyInfo$age < 35], x[keyInfo$age >= 35]))
 
+# Obtain p-values
+pValues <- data.frame(pValue = sapply(ttest, function(x) x$p.value),
+                     effectSize = sapply(ttest, function(x) diff(x$estimate)))
 
 ```
+
+# 2. Visualize top 5 most significant methylation positions (rows)
+
+```{r visualize}
+
+# Separate data in two groups by age
+firstGroup <- keyInfo[keyInfo$age < 35, ]$Sample_Name
+secondGroup <- keyInfo[keyInfo$age >= 35, ]$Sample_Name
+
+# Obtain most significant 5
+topRows <- pValues[order(pValues$pValue), ]
+topRows <- head(topRows, 5)
+
+# Obtain these rows from dataMatrix
+topRowsData <- dataMatrix[match(rownames(topRows), rownames(dataMatrix)), 
+                          order(keyInfo$age)]
+
+# Change the column names so that classification can be done
+for(i in 1:55) {
+  
+  if(colnames(topRowsData)[i] %in% firstGroup) {
+    colnames(topRowsData)[i] <- "first"
+  }
+  else {
+    colnames(topRowsData)[i] <- "second"
+  }
+  
+}
+
+# Generate plots
+for(i in 1:5) {
+  plot(
+    topRowsData[i, ], 
+    main = rownames(topRowsData)[i],
+    ylab = "Methylation level", 
+    col = as.factor(colnames(topRowsData))
+  )
+  
+  legend("topright", 
+         inset=.02, 
+         title="Age", 
+         c("< 35", ">= 35"), 
+         fill=c("red", "black"), 
+         horiz=TRUE, 
+         cex=0.8)
+}
+
+# Remove redundant data
+rm(firstGroup)
+rm(secondGroup)
+rm(topRows)
+rm(i)
+
+```
+
+# 3. Provide a table with number of significant rows at the following levels
+
+```{r pTable}
+
+# Produce a table from dataframe
+valuesTable <- data.frame(
+  "levels"          = c("alpha = 0.1", "alpha = 0.05",
+                        "alpha = 0.01", "FDR correction = 0.05", 
+                        "Bonferroni correction = 0.05"),
+	"significantRows" = c(sum(pValues$pValue < 0.1),
+                        sum(pValues$pValue < 0.05),
+                        sum(pValues$pValue < 0.01),
+                        sum(p.adjust(pValues$pValue, 
+                                    method = "fdr") < 0.05),
+                        sum(p.adjust(pValues$pValue,
+                                    method = "bonferroni") < 0.05)
+	                     )
+)
+
+# Generate the table
+kable(valuesTable, "html") %>%
+      kable_styling(font_size = 10) %>%
+      kable_styling("striped") %>%
+      scroll_box(width = "100%")
+
+```
+
+# 4. Visualize the histogram
+
+```{r histogram}
+
+hist(
+  pValues$pValue,
+  main = "p-values",
+  xlab = "p-value",
+  col = c("gray", "lightpink")
+)
+
+```
+
+# 5. Visualize the volcano-plot
+
+```{r volcanoPlot}
+
+plot(
+  pValues$effectSize,
+  -log(pValues$pValue),
+  main = "Volcano plot",
+	xlab = "Effect size",
+  ylab = "p-value log",
+  col = c("gray", "lightpink")
+)
+
+```
+
+# 6. Visualize a manhattan plot
+
+```{r manhattanPlot}
+
+plot(
+  x = metaInfo$pos[metaInfo$chr == "chrX"],
+  y = -log10(pValues$pValue[metaInfo$chr == "chrX"]),
+  main = "Manhattan plot",
+  xlab = "Chromosome X positions",
+  ylab = "-log10",
+  col = c("gray", "lightpink")
+)
+
+```
+
+# 7. Perform the first step using a linear model ???
