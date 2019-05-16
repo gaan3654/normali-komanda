@@ -7,12 +7,13 @@ output: html_document
 
 knitr::opts_chunk$set(echo = TRUE, out.width='750px', dpi=200)
 library(kableExtra)
-library(qqman)
-library("ggplot2")
+library(ggplot2)
 
 ```
 
 #  0. Load data
+
+In the initial 'Data preparation' step, we've added an extra 'Age' column. This column will be used to perform mean-difference hypothesis test between two groups. Some example data with the added 'Age' column:
 
 ```{r prepareData}
 
@@ -29,12 +30,22 @@ matchTable <- data.frame("age"=c("60", "44", "31", "25", "25", "43"),
 
 keyInfo <- merge(keyInfo, matchTable, all.x=TRUE)
 
+
+# Example data
+kable(keyInfo, "html") %>%
+      kable_styling(font_size=10) %>%
+      kable_styling("striped") %>%
+      scroll_box(width="100%")
+
 # Remove redundant data
 rm(matchTable)
 
 ```
 
+
 # 1. Perform a simple mean-difference hypothesis test between two groups. 
+
+In this step we've chosen two age groups - people aged below 35, and people older than 35. Student's t-test is used to determine whether the means of two groups are equal to each other. The dataset contains 3 people that are younger than 35 (25, 25, 31) and 3 people that are older (43, 44, 60). 
 
 ```{r meanDiff}
 
@@ -45,11 +56,13 @@ ttest <- apply(dataMatrix,
 
 # Obtain p-values
 pValues <- data.frame(pValue = sapply(ttest, function(x) x$p.value),
-                     effectSize = sapply(ttest, function(x) diff(x$estimate)))
+                      effectSize = sapply(ttest, function(x) diff(x$estimate)))
 
 ```
 
 # 2. Visualize top 5 most significant methylation positions (rows)
+
+Since there is a global loss of DNA methylation during aging, we can see in some sites that people over 35 have a smaller methylation level. However, these differences are minimal, and in most plots the methylation level is similar.
 
 ```{r visualize}
 
@@ -57,7 +70,7 @@ pValues <- data.frame(pValue = sapply(ttest, function(x) x$p.value),
 firstGroup <- keyInfo[keyInfo$age < 35, ]$Sample_Name
 secondGroup <- keyInfo[keyInfo$age >= 35, ]$Sample_Name
 
-# Obtain most significant 5
+# Obtain most significant 5 rows
 topRows <- pValues[order(pValues$pValue), ]
 topRows <- head(topRows, 5)
 
@@ -65,32 +78,29 @@ topRows <- head(topRows, 5)
 topRowsData <- dataMatrix[match(rownames(topRows), rownames(dataMatrix)), 
                           order(keyInfo$age)]
 
-# Change the column names so that classification can be done
+# Change the column names for factorization later
 for(i in 1:55) {
-  
   if(colnames(topRowsData)[i] %in% firstGroup) {
     colnames(topRowsData)[i] <- "first"
   }
   else {
     colnames(topRowsData)[i] <- "second"
   }
-  
 }
 
 # Generate plots
 for(i in 1:5) {
   plot(
     topRowsData[i, ], 
-    main = rownames(topRowsData)[i],
-    ylab = "Methylation level", 
-    col = as.factor(colnames(topRowsData))
+    main=rownames(topRowsData)[i],
+    ylab="Methylation level", 
+    col=as.factor(colnames(topRowsData))
   )
-  
   legend("topright", 
          inset=.02, 
          title="Age", 
          c("< 35", ">= 35"), 
-         fill=c("red", "black"), 
+         fill=c("black", "red"), 
          horiz=TRUE, 
          cex=0.8)
 }
@@ -112,63 +122,69 @@ valuesTable <- data.frame(
   "levels"          = c("alpha = 0.1", "alpha = 0.05",
                         "alpha = 0.01", "FDR correction = 0.05", 
                         "Bonferroni correction = 0.05"),
-	"significantRows" = c(sum(pValues$pValue < 0.1),
-                        sum(pValues$pValue < 0.05),
-                        sum(pValues$pValue < 0.01),
+  "significantRows" = c(sum(pValues$pValue<0.1),
+                        sum(pValues$pValue<0.05),
+                        sum(pValues$pValue<0.01),
                         sum(p.adjust(pValues$pValue, 
-                                    method = "fdr") < 0.05),
+                                    method="fdr")<0.05),
                         sum(p.adjust(pValues$pValue,
-                                    method = "bonferroni") < 0.05)
-	                     )
+                                    method="bonferroni")<0.05)
+                      )
 )
 
 # Generate the table
 kable(valuesTable, "html") %>%
-      kable_styling(font_size = 10) %>%
+      kable_styling(font_size=10) %>%
       kable_styling("striped") %>%
-      scroll_box(width = "100%")
+      scroll_box(width="100%")
 
 ```
 
 # 4. Visualize the histogram
 
+Our p-values appear to be uniformly distributed. 
+
 ```{r histogram}
 
 hist(
   pValues$pValue,
-  main = "p-values",
-  xlab = "p-value",
-  col = c("gray", "lightpink")
+  main="p-values",
+  xlab="p-value",
+  col=c("gray", "lightpink")
 )
 
 ```
 
 # 5. Visualize the volcano-plot
 
+A volcano plot combines a measure of statistical significance from p-values with the magnitude of the change. There aren't any points that are found toward the top of the plot that are far to either the left or right-hand sides. This indicates that there isn't a value that displays large magnitude fold changes as well as high statistical significance.
+
 ```{r volcanoPlot}
 
 plot(
   pValues$effectSize,
   -log(pValues$pValue),
-  main = "Volcano plot",
-	xlab = "Effect size",
-  ylab = "p-value log",
-  col = c("gray", "lightpink")
+  main="Volcano plot",
+	xlab="Effect size",
+  ylab="p-value log",
+  col=c("gray", "lightpink")
 )
 
 ```
 
 # 6. Visualize a manhattan plot
 
+For this step we chose chrX. The strongest associations have the smallest p-values, hence their negative logarithms are the greatest. 
+
 ```{r manhattanPlot}
 
 plot(
-  x = metaInfo$pos[metaInfo$chr == "chrX"],
-  y = -log10(pValues$pValue[metaInfo$chr == "chrX"]),
-  main = "Manhattan plot",
-  xlab = "Chromosome X positions",
-  ylab = "-log10",
-  col = c("gray", "lightpink")
+  x=metaInfo$pos[metaInfo$chr=="chrX"],
+  y=-log10(pValues$pValue[metaInfo$chr=="chrX"]),
+  main="Manhattan plot",
+  xlab="Chromosome X positions",
+  ylab="-log10",
+  col=c("gray", "lightpink")
 )
 
 ```
