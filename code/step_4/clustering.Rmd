@@ -1,0 +1,149 @@
+---
+title: "Classification"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, out.width='750px', dpi=200)
+options(warn=-1)
+library(kableExtra)
+library(ggplot2)
+library(caret)
+library(e1071)
+library(ROCR)
+
+```
+
+#  0. Load data
+
+```{r prepareData}
+
+# Load data
+data <- readRDS("finalData.RDS")
+dataMatrix <- readRDS("dataMatrix.RDS")
+keyInfo <- readRDS("keyInfo.RDS")
+metaInfo <- readRDS("metaInfo.RDS")
+
+# Add 'Age' column
+matchTable <- data.frame("age"=c("60", "44", "31", "25", "25", "43"), 
+                         "SampleID"=c("105", "218", "261", "043", "160", "149"),
+                         stringsAsFactors=FALSE)
+keyInfo <- merge(keyInfo, matchTable, all.x=TRUE)
+
+# Remove redundant data
+rm(matchTable)
+
+```
+
+# 1. Choose a discrete phenotype from your dataset you will want to predict
+
+For this assignment we chose methylation dependency on age (old/young) in site cg00050873.
+
+``` {r phenotype}
+
+# Separate data into two groups by age
+young <- keyInfo[keyInfo$age < 35, ]$Sample_Name
+old <- keyInfo[keyInfo$age >= 35, ]$Sample_Name
+
+# Extract the first row
+cpg <- dataMatrix[-2:-(length(dataMatrix)), ]
+cpg <- data.frame(sample=names(cpg), value=cpg)
+
+# Assign each sample a "old/young" value
+matchTable <- data.frame("age"=c("young"), 
+                         "sample"=young,
+                          stringsAsFactors=FALSE)
+
+cpg <- merge(cpg, matchTable, all.x=TRUE)
+cpg[is.na(cpg)] <- c("old")
+
+# Transforming the dependent variable to a factor
+cpg$age <- as.factor(cpg$age)
+
+```
+
+# 2. Select one of the two classification methods presented in class
+# 3. Split your datasets into cross-validation folds
+# 4. Obtain cross-validation prediction for each sample
+
+```{r classification}
+
+#Partitioning the data into training and validation data
+set.seed(101)
+index <- createDataPartition(cpg$age, p=0.7, list=F)
+train <- cpg[index, ]
+validation <- cpg[-index, ]
+
+# Explore data
+dim(train)
+dim(validation)
+names(train)
+head(train)
+head(validation)
+
+# Setting levels for both training and validation data
+levels(train$age) <- make.names(levels(factor(train$age)))
+levels(validation$age) <- make.names(levels(factor(validation$age)))
+
+# Setting up train controls
+repeats <- 3
+numbers <- 10
+tunel <- 10
+
+set.seed(1234)
+x <- trainControl(method="repeatedcv",
+                  number=numbers,
+                  repeats=repeats,
+                  classProbs=TRUE,
+                  summaryFunction=twoClassSummary)
+
+# Train model
+model1 <- invisible(train(age~. , 
+                data=train, 
+                method="knn",
+                preProcess=c("center","scale"),
+                trControl=x,
+                metric="ROC",
+                tuneLength=tunel))
+
+# Summary of model
+print(model1)
+plot(model1)
+
+```
+
+# 5. Report the average error rate
+
+``` {r validation}
+
+# Validation
+validPred <- predict(model1, validation, type="prob")
+
+# Storing Model Performance Scores
+predVal <- prediction(validPred[, 2], validation$age)
+
+# Calculating Area under Curve (AUC)
+perfVal <- performance(predVal, "auc")
+
+# Plot AUC
+perfVal <- performance(predVal, "tpr", "fpr")
+plot(perfVal, 
+     col="blue", 
+     lwd=1.5)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
